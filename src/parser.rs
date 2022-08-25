@@ -1,4 +1,4 @@
-use crate::{BoxedRegex, Quantifier, QuantifierModifier, QuantifierType, Regex};
+use crate::{BoxedRegex, Match, Quantifier, QuantifierModifier, QuantifierType, Regex};
 
 type Result<'a, A> = std::result::Result<(A, &'a str), ParseError>;
 
@@ -54,24 +54,26 @@ fn parse_repetition(input: &str) -> Result<BoxedRegex> {
 }
 
 fn parse_primary(input: &str) -> Result<BoxedRegex> {
-    parse_character(input).or_else(|_| parse_nested_regex(input))
+    parse_match(input).or_else(|_| parse_group(input))
 }
 
-fn parse_nested_regex(input: &str) -> Result<BoxedRegex> {
+fn parse_group(input: &str) -> Result<BoxedRegex> {
     let (_, input) = expect_character(input, '(')?;
     let (expr, input) = parse_expression(input)?;
     let (_, input) = expect_character(input, ')')?;
     Ok((expr, input))
 }
 
-fn parse_character(input: &str) -> Result<BoxedRegex> {
+fn parse_match(input: &str) -> Result<BoxedRegex> {
     if input.is_empty() {
         return Err(ParseError::EndOfInput);
     }
 
     let first = input.chars().next().unwrap();
     if first >= 'A' && first <= 'z' {
-        Ok((Box::new(Regex::Character(first)), &input[1..]))
+        Ok((Box::new(Match::Character(first).into()), &input[1..]))
+    } else if first == '.' {
+        Ok((Box::new(Match::AnyCharacter.into()), &input[1..]))
     } else {
         Err(ParseError::UnexpectedCharacter)
     }
@@ -115,6 +117,15 @@ mod test {
     fn should_parse_character() {
         let input = "a";
         assert_eq!(parse_expression(input), Ok((character('a'), "")));
+    }
+
+    #[test]
+    fn should_parse_any_character() {
+        let input = ".";
+        assert_eq!(
+            parse_expression(input),
+            Ok((Box::new(Match::AnyCharacter.into()), ""))
+        );
     }
 
     #[test]

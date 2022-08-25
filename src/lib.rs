@@ -5,7 +5,7 @@ type BoxedRegex = Box<Regex>;
 /// Internal representation for a regular expression.
 #[derive(Debug, PartialEq)]
 pub enum Regex {
-    Character(char),
+    Match(Match),
     Concatenation(BoxedRegex, BoxedRegex),
     Alternation(BoxedRegex, BoxedRegex),
     Repetition(BoxedRegex, Quantifier),
@@ -15,6 +15,18 @@ impl Regex {
     // fn from(input: &str) -> Option<Regex> {
     //     parser::parse_regex(input)
     // }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum Match {
+    Character(char),
+    AnyCharacter,
+}
+
+impl From<Match> for Regex {
+    fn from(m: Match) -> Self {
+        Regex::Match(m)
+    }
 }
 
 /// Quantifier for expressions.
@@ -37,7 +49,7 @@ pub enum QuantifierType {
 }
 
 pub fn character(c: char) -> BoxedRegex {
-    Box::new(Regex::Character(c))
+    Box::new(Match::Character(c).into())
 }
 
 pub fn alternation(e1: BoxedRegex, e2: BoxedRegex) -> BoxedRegex {
