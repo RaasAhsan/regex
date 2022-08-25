@@ -140,7 +140,22 @@ mod test {
     }
 
     #[test]
-    fn should_parse_concatenation_alternation_precedence() {
+    fn should_parse_repetition() {
+        let input = "a*";
+        assert_eq!(
+            parse_regex(input),
+            Ok((
+                repetition(
+                    character('a'),
+                    Quantifier(QuantifierType::ZeroOrMore, QuantifierModifier::Greedy)
+                ),
+                ""
+            ))
+        );
+    }
+
+    #[test]
+    fn should_parse_precedence() {
         let input = "a|bc|d";
         assert_eq!(
             parse_regex(input),
