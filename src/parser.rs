@@ -9,11 +9,14 @@ enum ParseError {
     UnexpectedCharacter,
 }
 
-pub fn parse_regex_opt(input: &str) -> Option<BoxedRegex> {
-    parse_repetition(input).ok().map(|x| x.0)
+pub fn parse_regex(input: &str) -> Option<BoxedRegex> {
+    match parse_repetition(input) {
+        Ok((expr, "")) => Some(expr),
+        _ => None,
+    }
 }
 
-fn parse_regex(input: &str) -> Result<BoxedRegex> {
+fn parse_expression(input: &str) -> Result<BoxedRegex> {
     parse_alternation(input)
 }
 
@@ -21,17 +24,12 @@ fn parse_alternation(input: &str) -> Result<BoxedRegex> {
     let (e, input) = parse_concatenation(input)?;
     let mut expr = e;
     let mut input = input;
-    while let Ok((e, next)) = parse_single_alternation(input) {
+    while let Ok((_, next)) = expect_character(input, '|') {
+        let (e, next) = parse_concatenation(next)?;
         expr = Box::new(Regex::Alternation(expr, e));
         input = next;
     }
     Ok((expr, input))
-}
-
-fn parse_single_alternation(input: &str) -> Result<BoxedRegex> {
-    let (_, input) = expect_character(input, '|')?;
-    let (e, input) = parse_concatenation(input)?;
-    Ok((e, input))
 }
 
 fn parse_concatenation(input: &str) -> Result<BoxedRegex> {
@@ -61,7 +59,7 @@ fn parse_primary(input: &str) -> Result<BoxedRegex> {
 
 fn parse_nested_regex(input: &str) -> Result<BoxedRegex> {
     let (_, input) = expect_character(input, '(')?;
-    let (expr, input) = parse_regex(input)?;
+    let (expr, input) = parse_expression(input)?;
     let (_, input) = expect_character(input, ')')?;
     Ok((expr, input))
 }
@@ -75,7 +73,7 @@ fn parse_character(input: &str) -> Result<BoxedRegex> {
     if first >= 'A' && first <= 'z' {
         Ok((Box::new(Regex::Character(first)), &input[1..]))
     } else {
-        Err(ParseError::EndOfInput)
+        Err(ParseError::UnexpectedCharacter)
     }
 }
 
@@ -116,14 +114,14 @@ mod test {
     #[test]
     fn should_parse_character() {
         let input = "a";
-        assert_eq!(parse_regex(input), Ok((character('a'), "")));
+        assert_eq!(parse_expression(input), Ok((character('a'), "")));
     }
 
     #[test]
     fn should_parse_alternation() {
         let input = "a|b|c";
         assert_eq!(
-            parse_regex(input),
+            parse_expression(input),
             Ok((
                 alternation(alternation(character('a'), character('b')), character('c')),
                 ""
@@ -135,7 +133,7 @@ mod test {
     fn should_parse_concatenation() {
         let input = "ab";
         assert_eq!(
-            parse_regex(input),
+            parse_expression(input),
             Ok((concatenation(character('a'), character('b')), ""))
         );
     }
@@ -144,7 +142,7 @@ mod test {
     fn should_parse_repetition() {
         let input = "a*";
         assert_eq!(
-            parse_regex(input),
+            parse_expression(input),
             Ok((
                 repetition(
                     character('a'),
@@ -159,7 +157,7 @@ mod test {
     fn should_parse_precedence() {
         let input = "a|(bc)*|d";
         assert_eq!(
-            parse_regex(input),
+            parse_expression(input),
             Ok((
                 alternation(
                     alternation(
@@ -174,5 +172,11 @@ mod test {
                 ""
             ))
         );
+    }
+
+    #[test]
+    fn should_reject_invalid() {
+        let input = "d++|e";
+        assert_eq!(parse_regex(input), None);
     }
 }
