@@ -2,6 +2,7 @@ mod parser;
 
 type BoxedRegex = Box<Regex>;
 
+/// Internal representation for a regular expression.
 #[derive(Debug, PartialEq)]
 pub enum Regex {
     Character(char),
@@ -16,6 +17,9 @@ impl Regex {
     // }
 }
 
+/// Quantifier for expressions.
+/// The first component specifies the type of the quantifier (how many).
+/// The second component specifies the modifier of the quantifier (greediness).
 #[derive(Debug, PartialEq)]
 pub struct Quantifier(QuantifierType, QuantifierModifier);
 

@@ -156,14 +156,20 @@ mod test {
 
     #[test]
     fn should_parse_precedence() {
-        let input = "a|bc|d";
+        let input = "a|bc*|d";
         assert_eq!(
             parse_regex(input),
             Ok((
                 alternation(
                     alternation(
                         character('a'),
-                        concatenation(character('b'), character('c'))
+                        concatenation(
+                            character('b'),
+                            repetition(
+                                character('c'),
+                                Quantifier(QuantifierType::ZeroOrMore, QuantifierModifier::Greedy)
+                            )
+                        )
                     ),
                     character('d')
                 ),
