@@ -6,6 +6,7 @@ type Result<'a, A> = std::result::Result<(A, &'a str), ParseError>;
 enum ParseError {
     EndOfInput,
     InvalidQuantifier,
+    UnexpectedCharacter,
 }
 
 pub fn parse_regex_opt(input: &str) -> Option<BoxedRegex> {
@@ -87,7 +88,7 @@ fn expect_character(input: &str, c: char) -> Result<()> {
     if first == c {
         Ok(((), &input[1..]))
     } else {
-        Err(ParseError::EndOfInput)
+        Err(ParseError::UnexpectedCharacter)
     }
 }
 
@@ -156,20 +157,17 @@ mod test {
 
     #[test]
     fn should_parse_precedence() {
-        let input = "a|bc*|d";
+        let input = "a|(bc)*|d";
         assert_eq!(
             parse_regex(input),
             Ok((
                 alternation(
                     alternation(
                         character('a'),
-                        concatenation(
-                            character('b'),
-                            repetition(
-                                character('c'),
-                                Quantifier(QuantifierType::ZeroOrMore, QuantifierModifier::Greedy)
-                            )
-                        )
+                        repetition(
+                            concatenation(character('b'), character('c')),
+                            Quantifier(QuantifierType::ZeroOrMore, QuantifierModifier::Greedy)
+                        ),
                     ),
                     character('d')
                 ),
